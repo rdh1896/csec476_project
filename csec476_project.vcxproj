@@ -140,9 +140,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Source.cpp" />
+    <ClCompile Include="b64.cpp" />
+    <ClCompile Include="vigCrypt.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="b64.h" />
     <ClInclude Include="Source.h" />
+    <ClInclude Include="vigCrypt.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

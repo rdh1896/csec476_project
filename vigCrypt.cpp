@@ -1,3 +1,12 @@
+/*
+* 
+* File: Source.cpp
+* Author: Russell Harvey
+* 
+* Facilitates encoding/decoding for network communications using a Viginere cipher
+* 
+*/
+
 #include "vigCrypt.h"
 #define WIN32_LEAN_AND_MEAN
 #include <string>
@@ -20,9 +29,9 @@ string vigCrypt::encrypt(string t) {
             continue;
         }
         if (isLower) {
-            output += tolower((c + key[j] - 2 * 'A') % 26 + 'A');
+            output += tolower(((c + key[j]) - (2 * 'A')) % 26 + 'A');
         } else {
-            output += (c + key[j] - 2 * 'A') % 26 + 'A';
+            output += ((c + key[j]) - (2 * 'A')) % 26 + 'A';
         }
         j = (j + 1) % key.length();
     }

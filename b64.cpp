@@ -7,10 +7,9 @@
 
 #include "b64.h"
 
-#include <algorithm>
 #include <stdexcept>
 
-static unsigned int pos_of_char(const unsigned char chr) {
+static unsigned int b64_char(const unsigned char chr) {
     
     // Return the position of a character in the Base64 encoding table
     
@@ -48,21 +47,21 @@ static std::string decode(std::string encoded_string) {
     result.reserve(approx_str_len);
 
     while (position < str_len) {
-        size_t pos_of_char_1 = pos_of_char(encoded_string[position + 1]);
+        size_t b64_char_1 = b64_char(encoded_string[position + 1]);
         // First output byte
-        int s1 = (pos_of_char(encoded_string[position + 0])) << 2;
-        int s2 = (pos_of_char_1 & 0x30) >> 4;
+        int s1 = (b64_char(encoded_string[position + 0])) << 2;
+        int s2 = (b64_char_1 & 0x30) >> 4;
         result.push_back(static_cast<std::string::value_type>((s1 + s2)));
         if ((position + 2 < str_len) && encoded_string[position + 2] != '=') {
-            unsigned int pos_of_char_2 = pos_of_char(encoded_string[position + 2]);
+            unsigned int b64_char_2 = b64_char(encoded_string[position + 2]);
             // Second output byte
-            int s3 = (pos_of_char_1 & 0x0f) << 4;
-            int s4 = (pos_of_char_2 & 0x3c) >> 2;
+            int s3 = (b64_char_1 & 0x0f) << 4;
+            int s4 = (b64_char_2 & 0x3c) >> 2;
             result.push_back(static_cast<std::string::value_type>((s3 + s4)));
             if ((position + 3 < str_len) && encoded_string[position + 3] != '=') {
                 // Third output byte
-                int s5 = (pos_of_char_2 & 0x03) << 6;
-                int s6 = pos_of_char(encoded_string[position + 3]);
+                int s5 = (b64_char_2 & 0x03) << 6;
+                int s6 = b64_char(encoded_string[position + 3]);
                 result.push_back(static_cast<std::string::value_type>((s5 + s6)));
             }
         }
